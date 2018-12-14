@@ -2,23 +2,26 @@
 #include "device_launch_parameters.h"
 #include <iostream>
 #include <cmath>
+#include <chrono>
 
 #define N 1024
 
 using namespace std;
+using namespace chrono;
 
 __global__ void add(int *a, int *b, int *c) {
-	c[blockIdx.x] = a[blockIdx.x] + b[blockIdx.x];
+	c[threadIdx.x] = a[threadIdx.x] + b[threadIdx.x];
 }
 
 void random_ints(int* a, int m)
 {
 	int i;
 	for (i = 0; i < m; ++i)
-		a[i] = rand()%5000;
+		a[i] = rand() % 5000;
 }
 
 int main() {
+	time_point<steady_clock> start, end;
 	int *a, *b, *c;
 	int *d_a, *d_b, *d_c;
 	int size = sizeof(int)*N;
@@ -35,13 +38,18 @@ int main() {
 	cudaMemcpy(d_a, a, size, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_b, b, size, cudaMemcpyHostToDevice);
 
-	add << <N, 1 >> > (d_a, d_b, d_c);
+	start = steady_clock::now();
+	add << <1, N >> > (d_a, d_b, d_c);
+	end = steady_clock::now();
+	duration<double> elapsed_seconds = end - start;
+	cout << elapsed_seconds.count() << endl;
 	cudaMemcpy(c, d_c, size, cudaMemcpyDeviceToHost);
 
 	for (int i = 0; i < N; ++i) {
 		cout << a[i] << "+" << b[i] << "=" << c[i] << endl;
 	}
-	
+	//cout << c[1] << endl;
+
 
 	delete[] a;
 	delete[] b;
